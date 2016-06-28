@@ -1,6 +1,5 @@
 
 var logger = require('nodejslogger');
-logger.init({"mode":"D"}) //Enable only debug logs
 //logger.init({"mode":"E"}) //Enable only error logs
 
 const cmdLineProcess = require('aws-iot-device-sdk/examples/lib/cmdline');
@@ -23,7 +22,7 @@ function processTest(args) {
    });
 
   thingShadows.on('connect', function() {
-    logger.debug('(aws) connected to AWS IoT');
+    logger.info('(aws) connected to AWS IoT');
   });
 
   thingShadows.on('status', function(thingName, stat, clientToken, stateObject) {
@@ -44,7 +43,6 @@ function processTest(args) {
         logEntry = '(particle) calling function: ' + particleFunctionNames[thingName] + ' with argument: ' + JSON.stringify(desiredState) + ' for coreId: ' + thingName;
         logger.debug(logEntry);
 
-        //var fnPr = particle.callFunction({ deviceId: thingName, name: particleFunctionName, argument: JSON.stringify(desiredState), auth: token });
         var fnPr = particle.callFunction({ deviceId: thingName, name: particleFunctionNames[thingName], argument: JSON.stringify(desiredState), auth: token });
         fnPr.then(
           function (data) {
@@ -58,17 +56,24 @@ function processTest(args) {
           });
         }
       } else {
+        // desiredStateKeyCount state is empty, so exit
         var logEntry = '(aws) received: ' + stat + ' status on: ' + thingName;
         logger.error(logEntry);
+        process.exit(1);
       }
   });
+  thingShadows.on('error', function(error) {
+    var logEntry = '(aws) error received: ' + error;
+    logger.error(logEntry);
+    process.exit(1);
+  });
+
 
   var token = args.thingName;
   var particleModule = require('particle-api-js');
   var particle = new particleModule();
 
   const PARTICLE_FUNCTION_ADVERTISEMENT = "function";
-//  var particleFunctionName = null;
 
   particle.getEventStream({ deviceId: 'mine', auth: token }).then(function(stream) {
     stream.on('event', function(data) {
@@ -102,6 +107,10 @@ function processTest(args) {
       }
       */
     });
+  }, function(err) {
+    logEntry = '(particle) getEventStream error: ' + err.errorDescription + '\n';
+    logger.error(logEntry);
+    process.exit(1);
   });
 
 }
